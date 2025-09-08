@@ -116,26 +116,21 @@ class ibvs_run:
         return square_pts
     
 
-    # def compute_error(pts, square_pts):
-    
-    #     pts = np.array(pts, dtype=np.float32)
-    #     quare_pts = np.array(square_pts, dtype=np.float32)
-    #     diffs = np.linalg.norm(pts - square_pts, axis=1)
+    def get_jointstate(self):
+        
+        q = self.bot.arm.get_joint_positions()
+        dq = self.bot.arm.get_joint_velocities()
+        ee = self.bot.arm.get_ee_pose()
+        
+        return q, ee
 
-    #     return diffs, np.mean(diffs)
-
-    
-
-    
-    def control_law(self, error_corners, x, y, Z, cTb, bTe, Blist):
+    def control_law(self, q, error_corners, x, y, Z, cTb, bTe, Blist):
         """
 
         everytime get the error and calculate the joint velocity one time
         return the joint velocity for each time deteced the
             
         """
-        q = self.bot.arm.get_joint_positions()
-        
         
         L = ibvs.L_point(x, y, Z)
         cVb = ibvs.base_to_camera(cTb)

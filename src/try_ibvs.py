@@ -27,6 +27,11 @@ def main():
             print(square_pts.flatten())
             # print(pts.flatten())
             print(f"检测到 Tag, 距离 Z = {Z:.3f} m, 误差为 e = {error.flatten()}" )
+            
+            
+            q, ee = ibvs.get_jointstate()
+            
+            dq = ibvs.control_law(q, error, x, y, Z, cTb, bTe, Blist)
 
         else:
             print("未检测到 Tag")
