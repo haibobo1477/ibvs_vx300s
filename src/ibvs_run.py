@@ -39,68 +39,93 @@ class ibvs_run:
         self.at_detector = Detector(
             families="tagStandard41h12",
             nthreads=1,
-            quad_decimate=1.0,
+            quad_decimate=2.0,
             quad_sigma=0.0,
             refine_edges=1,
-            decode_sharpening=0.25,
+            decode_sharpening=0.8,
             debug=0
            )
 
         # ====== 机械臂 ======
-        robot_startup()
+        # robot_startup()
         self.bot = InterbotixManipulatorXS(robot_model="vx300s")
         self.bot.core.robot_set_operating_modes("group", "arm", "velocity")
         
-        self.joint_names = self.bot.arm.group_info.joint_names
-        self.idx_map = self.bot.core.js_index_map
+        # self.joint_names = self.bot.arm.group_info.joint_names
+        # self.idx_map = self.bot.core.js_index_map
     
     
-    def read_frames(self):
+    def set_camera(self):
         frames = self.pipeline.wait_for_frames()
         cf = frames.get_color_frame()
-        df = frames.get_depth_frame()
-        if not cf or not df:
+        if not cf:
             return None, None, None
         color = np.asanyarray(cf.get_data())
-        depth = np.asanyarray(df.get_data())
+
         gray = cv2.cvtColor(color, cv2.COLOR_BGR2GRAY)
         
-        return color, depth, frames, gray
-
-
-    def get_joint_positions(self):
-        js = self.bot.core.joint_states
-        q = np.array([js.position[self.idx_map[n]] for n in self.joint_names], dtype=np.float64)
-        return q
-
+        return color, gray
 
 
     def detect_tag(self, gray, color_image):
         
         detections = self.at_detector.detect(
-            gray,
-            estimate_tag_pose=True,
-            camera_params=[self.fx, self.fy, self.cx, self.cy],
-            tag_size=self.TAG_SIZE_M
-        )
-        
-        # only one tag should be dectected
-        for det in detections:
-            # 2D 可视化
-            pts = det.corners.astype(int)
-            cv2.polylines(color_image, [pts], True, (0, 255, 0), 2)
-            cX, cY = map(int, det.center)
-            cv2.circle(color_image, (cX, cY), 3, (0, 0, 255), -1)
-            cv2.putText(color_image, f"id:{det.tag_id}", (pts[0][0], pts[0][1]-5),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+        gray,
+        estimate_tag_pose=True,
+        camera_params=[self.fx, self.fy, self.cx, self.cy],
+        tag_size=self.TAG_SIZE_M
+    )
+    
+        if len(detections) == 0:
+            return None, None
 
-            # 三维位姿（相机坐标系）：R(3x3), t(3x1, 米)
-            R = det.pose_R.astype(np.float64)
-            t = det.pose_t.reshape(3, 1).astype(np.float64)
-             
-        return pts, t
+    # 只取第一个检测到的 tag
+        det = detections[0]
+
+    # 2D 可视化
+        pts = det.corners.astype(int)
+        cv2.polylines(color_image, [pts], True, (0, 255, 0), 2)
+        cX, cY = map(int, det.center)
+        cv2.circle(color_image, (cX, cY), 3, (0, 0, 255), -1)
+        cv2.putText(color_image, f"id:{det.tag_id}", (pts[0][0], pts[0][1]-5),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+
+    # 三维位姿（相机坐标系）：t(3x1, 米)
+        t = det.pose_t.reshape(3, 1).astype(np.float64)
+        Z = np.linalg.norm(t)
+
+        return pts, Z
+
+
+    def draw_reference(self, color_image, square_half=60):
+        h, w, _ = color_image.shape
+        cx_img, cy_img = w // 2, h // 2   # 图像中心
     
+    # 修改顺序：右下 -> 右上 -> 左上 -> 左下
+        square_pts = [
+            (cx_img + square_half, cy_img + square_half),  # 右下
+            (cx_img + square_half, cy_img - square_half),  # 右上
+            (cx_img - square_half, cy_img - square_half),  # 左上
+            (cx_img - square_half, cy_img + square_half)   # 左下
+    ]
+
+    # 画角点
+        for pt in square_pts:
+            cv2.circle(color_image, pt, 3, (0, 0, 0), -1)  # 黑色角点
+
+        return square_pts
     
+
+    # def compute_error(pts, square_pts):
+    
+    #     pts = np.array(pts, dtype=np.float32)
+    #     quare_pts = np.array(square_pts, dtype=np.float32)
+    #     diffs = np.linalg.norm(pts - square_pts, axis=1)
+
+    #     return diffs, np.mean(diffs)
+
+    
+
     
     def control_law(self, error_corners, x, y, Z, cTb, bTe, Blist):
         """

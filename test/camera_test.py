@@ -76,6 +76,27 @@ try:
         # BGR 彩色图
         color_image = np.asanyarray(color_frame.get_data())
 
+        # ====== 添加屏幕中心点和正方形角点 ======
+        h, w, _ = color_image.shape
+        cx_img, cy_img = w // 2, h // 2   # 图像中心
+        square_half = 60  # 正方形半边长(像素，可调整)
+
+        # 中心点
+        # cv2.circle(color_image, (cx_img, cy_img), 2, (255, 0, 0), -1)  # 蓝色中心点
+
+        # 四个角点
+        square_pts = [
+            (cx_img - square_half, cy_img - square_half),  # 左上
+            (cx_img + square_half, cy_img - square_half),  # 右上
+            (cx_img + square_half, cy_img + square_half),  # 右下
+            (cx_img - square_half, cy_img + square_half)   # 左下
+        ]
+
+        # 画角点
+        for pt in square_pts:
+            cv2.circle(color_image, pt, 2, (0, 0, 0), -1)  # 黑色角点
+
+
         # 转灰度图（单通道）
         gray = cv2.cvtColor(color_image, cv2.COLOR_BGR2GRAY)
 
@@ -99,13 +120,15 @@ try:
             # 三维位姿（相机坐标系）：R(3x3), t(3x1, 米)
             R = det.pose_R.astype(np.float64)
             t = det.pose_t.reshape(3, 1).astype(np.float64)
+            Z = np.linalg.norm(t)
 
             # 打印姿态
-            print(f"[Tag {det.tag_id}] t (m) = {t.flatten()}")
-            print(f"[Tag {det.tag_id}] R =\n{R}")
-
-            # 在图像上画相机坐标系下的三轴
-            draw_axes(color_image, (fx, fy, cx, cy), R, t, axis_len=TAG_SIZE_M * 0.75)
+            # print(f"[Tag {det.tag_id}] R =\n{R}")
+            # print(f"[Tag {det.tag_id}] t (m) = {t}")
+            print(pts)
+            
+            # # 在图像上画相机坐标系下的三轴
+            # draw_axes(color_image, (fx, fy, cx, cy), R, t, axis_len=TAG_SIZE_M * 0.75)
 
         cv2.imshow("RealSense D345i - AprilTag Pose", color_image)
         if cv2.waitKey(1) & 0xFF == ord("q"):
