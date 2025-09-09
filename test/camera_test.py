@@ -125,10 +125,10 @@ try:
             # 打印姿态
             # print(f"[Tag {det.tag_id}] R =\n{R}")
             # print(f"[Tag {det.tag_id}] t (m) = {t}")
-            print(pts)
+            # print(pts)
             
             # # 在图像上画相机坐标系下的三轴
-            # draw_axes(color_image, (fx, fy, cx, cy), R, t, axis_len=TAG_SIZE_M * 0.75)
+            draw_axes(color_image, (fx, fy, cx, cy), R, t, axis_len=TAG_SIZE_M * 0.75)
 
         cv2.imshow("RealSense D345i - AprilTag Pose", color_image)
         if cv2.waitKey(1) & 0xFF == ord("q"):

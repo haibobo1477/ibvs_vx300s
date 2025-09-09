@@ -14,16 +14,16 @@ def main():
     bot.core.robot_set_operating_modes('group', 'arm', 'velocity')
 
     # 设置一个合理的速度 (单位 rad/s)
-    velocity = [0.5, 0, 0, 0, 0.2, 0]   # 只让 waist 关节转
+    velocity = [-0.3, 0, 0, 0, 0.0, 0]   # 只让 waist 关节转
 
     # 发送速度命令
     bot.core.robot_write_commands('arm', velocity)
 
     # 让它转 3 秒钟
-    time.sleep(3)
+    time.sleep(12)
 
     # 停止运动
-    bot.core.robot_write_commands('arm', [-0.2, 0, 0, 0, 0, 0])
+    bot.core.robot_write_commands('arm', [0.0, 0, 0, 0, 0, 0])
 
     # 关闭机器人
     robot_shutdown()

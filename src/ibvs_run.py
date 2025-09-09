@@ -77,7 +77,7 @@ class ibvs_run:
     )
     
         if len(detections) == 0:
-            return None, None
+            return None, None, None, None
 
     # 只取第一个检测到的 tag
         det = detections[0]
@@ -91,10 +91,34 @@ class ibvs_run:
                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
 
     # 三维位姿（相机坐标系）：t(3x1, 米)
+        R = det.pose_R.astype(np.float64)
         t = det.pose_t.reshape(3, 1).astype(np.float64)
-        Z = np.linalg.norm(t)
+        # Z = np.linalg.norm(t)
 
-        return pts, Z
+        # 中心三维位姿
+        
+    # tag 半边长
+        s = self.TAG_SIZE_M / 2.0
+
+    # Tag 坐标系下的四个角点 (顺序和 detector 的 pts 对齐)
+        tag_corners_3d = np.array([
+              [ s, -s, 0],   # 右下
+              [ s,  s, 0],   # 右上
+              [-s,  s, 0],   # 左上
+              [-s, -s, 0]    # 左下
+        ], dtype=np.float64).T  # shape (3,4)
+
+    # 转到相机坐标系
+        corners_cam = R @ tag_corners_3d + t  # shape (3,4)
+
+    # 取每个角点的 Z
+        Z_corners = corners_cam[2, :]   # shape (4,)
+
+
+        x = (pts[:,0] - self.cx) / self.fx
+        y = (pts[:,1] - self.cy) / self.fy
+
+        return pts, Z_corners, x, y
 
 
     def draw_reference(self, color_image, square_half=60):
@@ -108,41 +132,66 @@ class ibvs_run:
             (cx_img - square_half, cy_img - square_half),  # 左上
             (cx_img - square_half, cy_img + square_half)   # 左下
     ]
+        
 
     # 画角点
         for pt in square_pts:
             cv2.circle(color_image, pt, 3, (0, 0, 0), -1)  # 黑色角点
 
-        return square_pts
+        return np.array(square_pts, dtype=np.float32)
     
 
     def get_jointstate(self):
         
         q = self.bot.arm.get_joint_positions()
-        dq = self.bot.arm.get_joint_velocities()
         ee = self.bot.arm.get_ee_pose()
         
         return q, ee
 
-    def control_law(self, q, error_corners, x, y, Z, cTb, bTe, Blist):
+    def control_law(self, q, error_corners, x, y, Z, cTb, Slist, lam):
         """
-
-        everytime get the error and calculate the joint velocity one time
-        return the joint velocity for each time deteced the
+         IBVS:
+            dq = λ * (L * cVb * Js)^+ * (s - s*)
+        """
             
-        """
-        
         L = ibvs.L_point(x, y, Z)
         cVb = ibvs.base_to_camera(cTb)
-        bVe = ibvs.end_to_base(bTe)
-        eJe = mr.JacobianBody(Blist, q)
+        # bVe = ibvs.end_to_base(bTe)
+        # eJe = mr.JacobianBody(Blist, q)
+
+        Js = mr.JacobianSpace(Slist, q)
+
+        J_img = L @ cVb @ Js
+
+        J_pinv = np.linalg.pinv(J_img)
         
-        
-        dq = ( L @ cVb @ bVe @ eJe) @ error_corners
+
+        dq = lam * J_pinv @ error_corners
         
         return dq
     
-    
+
+    def move_robotic(self, dq, max_vel=0.5):
+            
+            """
+               控制机械臂关节速度
+               dq: numpy.ndarray, shape (n,1) or (n,), 关节速度 (rad/s)
+               max_vel: 每个关节最大速度 (rad/s)，默认 0.5
+            """
+            dq = np.array(dq).flatten()   # 确保是一维向量
+
+               # 安全检查：如果检测不到目标，直接停
+            if dq is None or dq.shape[0] != len(self.bot.arm.group_info.joint_names):
+                print("[WARN] dq 无效，停止机械臂")
+                self.bot.core.robot_write_commands('arm', [0, 0, 0, 0, 0, 0])
+                return
+
+              # 限幅：避免速度过大
+            dq_clipped = np.clip(dq, -max_vel, max_vel)
+
+              # 写入命令
+            self.bot.core.robot_write_commands('arm', dq_clipped.tolist())
+
 
 
 
