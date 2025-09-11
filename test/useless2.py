@@ -30,4 +30,5 @@ Z = np.array([5, 6, 7, 8])
 
 
 L = L_point(x,y,Z)
+print(L)
 print(L[0:2, :])

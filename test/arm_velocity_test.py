@@ -11,19 +11,19 @@ def main():
     robot_startup()
 
     # 切换 arm 组到 velocity 模式
-    bot.core.robot_set_operating_modes('group', 'arm', 'velocity')
+    bot.core.robot_set_operating_modes('group', 'arm', 'position')
 
     # 设置一个合理的速度 (单位 rad/s)
-    velocity = [-0.3, 0, 0, 0, 0.0, 0]   # 只让 waist 关节转
+    pos = [0.1, 0, 0, 0, 0.0, 0]   # 只让 waist 关节转
 
     # 发送速度命令
-    bot.core.robot_write_commands('arm', velocity)
+    bot.core.robot_write_commands('arm', pos)
 
-    # 让它转 3 秒钟
-    time.sleep(12)
+    # # 让它转 3 秒钟
+    # time.sleep(12)
 
-    # 停止运动
-    bot.core.robot_write_commands('arm', [0.0, 0, 0, 0, 0, 0])
+    # # 停止运动
+    # bot.core.robot_write_commands('arm', [0.0, 0, 0, 0, 0, 0])
 
     # 关闭机器人
     robot_shutdown()

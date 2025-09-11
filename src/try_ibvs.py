@@ -55,6 +55,8 @@ cTb = np.array([
     [ 0.0,   0.0,   0.0,   1.0],
 ])
 
+# Z_star = [0.102, 0.102, 0.102, 0.102]
+Z_star = 0.202
 
 def main():
     ibvs = ibvs_run()
@@ -67,30 +69,34 @@ def main():
             continue
 
         # 画中心正方形参考点
-        square_pts = ibvs.draw_reference(color)     # 对    (4,2)
+        # square_pts = ibvs.draw_reference(color)     # 对    (4,2)
+        [cx_img, cy_img] = ibvs.draw_reference(color)
 
         # print(square_pts.shape)
         # print(square_pts)
 
-        x_ref = (square_pts[:,0] - ibvs.cx) / ibvs.fx    # 对   (4,1)
-        y_ref = (square_pts[:,1] - ibvs.cy) / ibvs.fy    # 对   (4,1)
+        x_ref = (cx_img - ibvs.cx) / ibvs.fx    # 对   (4,1)
+        y_ref = (cy_img - ibvs.cy) / ibvs.fy    # 对   (4,1)
 
+        # print(x_ref)
+        # print(y_ref)
+    
 
         # AprilTag 检测
-        pts, Z_corners, x, y = ibvs.detect_tag(gray, color)  # pts->(4,2)   Z_corners->(4,1)  x->(4,1) y->(4,1)
+        # pts, Z_corners, x, y = ibvs.detect_tag(gray, color)  # pts->(4,2)   Z_corners->(4,1)  x->(4,1) y->(4,1)
+        x, y, Z = ibvs.detect_tag(gray, color)
         
-        time.sleep(0.02)
+        time.sleep(0.05)
 
-        if pts is not None:
+        if x is not None and y is not None:
 
-            square_pts = np.array(square_pts, dtype=np.float32)
-            pts = np.array(pts, dtype=np.float32)
+            # square_pts = np.array(square_pts, dtype=np.float32)
+            # pts = np.array(pts, dtype=np.float32)
 
-
+            
             # print(y.shape)
             # print(y)
             # error = pts - square_pts
-            # error_corners = error.flatten().reshape(-1,1)   # shape (8,1)
 
             error = np.column_stack([x - x_ref, y - y_ref]).reshape(-1,1)
             # print(square_pts.flatten())
@@ -98,7 +104,7 @@ def main():
             # print(f"检测到 Tag, 距离 Z = {Z_corners} m, 误差为 e = {error}" )
             # print(error.shape)
             # print(error)
-            q, ee = ibvs.get_jointstate()
+            q = ibvs.get_jointstate()
             
             # print("x is:", x)
             # print("y is:", y)
@@ -106,13 +112,15 @@ def main():
             # print(q)
             # print(ee)
             
-            # dq = ibvs.control_law(q, error, x, y, Z_corners, cTb, ee, Slist, lam=0.0001)
-            dq = ibvs.control_law(q, error, x, y, Z_corners, cTb, Slist, lam=0.02)
+
+            dq = ibvs.control_law(q, error, x, y, Z, cTb, Slist, lam=2.0)
+            # dq = ibvs.control_law(q, error, x, y, Z_corners, cTb, Slist, lam=0.01)
+            # dq = ibvs.control_law(q, error, x_ref, y_ref, Z_star, cTb, Slist, lam=0.2)
             # print(dq.shape)
             print(dq)
  
 
-            ibvs.move_robotic(dq, max_vel=0.5)
+            ibvs.move_robotic(dq, max_vel=0.3)
 
 
         else:

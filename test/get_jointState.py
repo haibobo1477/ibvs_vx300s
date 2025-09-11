@@ -14,7 +14,7 @@ def main(args=None):
             dq = bot.arm.get_joint_velocities()
             ee = bot.arm.get_ee_pose()
             # print(q)
-            print(ee)
+            print(q)
             time.sleep(0.1)   # 每 0.1s 打印一次
     except KeyboardInterrupt:
         pass
