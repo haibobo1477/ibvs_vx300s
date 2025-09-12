@@ -65,8 +65,6 @@ def main():
 
             u, v, Z_center, t = ibvs.detect_tag(gray, color)
 
-            time.sleep(0.05)
-
             if t is not None:
                 x_c = (u - ibvs.cx) / ibvs.fx
                 y_c = (v - ibvs.cy) / ibvs.fy
@@ -78,7 +76,7 @@ def main():
 
 
                 # 4) IBVS 控制律：相机系的 twist v_c = -λ * pinv(L) * e
-                lambda_gain = 0.001  # 先小后大，避免抖动
+                lambda_gain = 0.0022 # 先小后大，避免抖动
                 L_pinv = np.linalg.pinv(L)
                 v_c = lambda_gain * (L_pinv @ e)   # 6x1: [vx,vy,vz, wx,wy,wz] (camera frame)
                 # print(v_c)
@@ -99,28 +97,23 @@ def main():
 
                 dq = Js_pinv @ v_b
                 dq = dq.reshape(-1)
-                # print(dq)
+                print(dq)
                 # print(Js)
                 # print(q_current)
 
-                q_next = q_current + dq * dt
-                # print(dt)
-                print("q_next:", q_next)
+                # q_next = q_current + dq * dt
+                # # print(dt)
+                # print("q_next:", q_next)
 
-                ibvs.move_robotic(q_next)
-
-
-                    
-                    # 保存到日志
-                    # v_log.append([vx, vy, vz, wx, wy, wz])
-                    # print(v_log)
-                    # print(vx, vy, vz)
+                # ibvs.move_robotic(q_next)
+                ibvs.move_robotic(dq, max_vel=0.5)
 
             else:
                 print("未检测到 Tag")
+                ibvs.move_robotic([0,0,0,0,0,0], max_vel=0.0)
 
             cv2.imshow("AprilTag + Reference", color)
-            cv2.waitKey(1)   # 仅保证窗口刷新，不用 q 来退出
+            cv2.waitKey(1) 
 
     except KeyboardInterrupt:
         print("\n检测到 Ctrl+C,准备退出程序...")

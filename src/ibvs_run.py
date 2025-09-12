@@ -23,7 +23,7 @@ class ibvs_run:
         # ====== RealSense 管道 ======
         self.pipeline = rs.pipeline()
         config = rs.config()
-        config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
+        config.enable_stream(rs.stream.color, 1280, 720, rs.format.bgr8, 30)
         
         # ====== 启动摄像头并提取相机内参 ======
         self.pipeline.start(config)
@@ -50,7 +50,7 @@ class ibvs_run:
         # ====== 机械臂 ======
         # robot_startup()
         self.bot = InterbotixManipulatorXS(robot_model="vx300s")
-        # self.bot.core.robot_set_operating_modes("group", "arm", "velocity")
+        self.bot.core.robot_set_operating_modes("group", "arm", "velocity")
         
         # self.joint_names = self.bot.arm.group_info.joint_names
         # self.idx_map = self.bot.core.js_index_map
@@ -228,34 +228,34 @@ class ibvs_run:
 
 
 
-    def move_robotic(self, q):
-        self.bot.arm.set_joint_positions(q)
+    # def move_robotic(self, q):
+    #     self.bot.arm.set_joint_positions(q)
 
 
     # def move_robotic(self, x, y, z):
     #     self.bot.arm.set_ee_pose_components(x, y, z)
     
 
-    # def move_robotic(self, dq, max_vel=0.2):
+    def move_robotic(self, dq, max_vel=0.5):
             
-    #         """
-    #            控制机械臂关节速度
-    #            dq: numpy.ndarray, shape (n,1) or (n,), 关节速度 (rad/s)
-    #            max_vel: 每个关节最大速度 (rad/s)，默认 0.5
-    #         """
-    #         dq = np.array(dq).flatten()   # 确保是一维向量
+            """
+               控制机械臂关节速度
+               dq: numpy.ndarray, shape (n,1) or (n,), 关节速度 (rad/s)
+               max_vel: 每个关节最大速度 (rad/s)，默认 0.5
+            """
+            dq = np.array(dq).flatten()   # 确保是一维向量
 
-    #            # 安全检查：如果检测不到目标，直接停
-    #         if dq is None or dq.shape[0] != len(self.bot.arm.group_info.joint_names):
-    #             print("[WARN] dq 无效，停止机械臂")
-    #             self.bot.core.robot_write_commands('arm', [0, 0, 0, 0, 0, 0])
-    #             return
+               # 安全检查：如果检测不到目标，直接停
+            if dq is None or dq.shape[0] != len(self.bot.arm.group_info.joint_names):
+                print("[WARN] dq 无效，停止机械臂")
+                self.bot.core.robot_write_commands('arm', [0, 0, 0, 0, 0, 0])
+                return
 
-    #           # 限幅：避免速度过大
-    #         dq_clipped = np.clip(dq, -max_vel, max_vel)
+              # 限幅：避免速度过大
+            dq_clipped = np.clip(dq, -max_vel, max_vel)
 
-    #           # 写入命令
-    #         self.bot.core.robot_write_commands('arm', dq_clipped.tolist())
+              # 写入命令
+            self.bot.core.robot_write_commands('arm', dq_clipped.tolist())
 
 
 
